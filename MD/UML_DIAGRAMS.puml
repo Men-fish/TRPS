@@ -1,0 +1,521 @@
+@startuml
+!theme plain
+skinparam classAttributeIconSize 0
+
+' ============================================
+' UML ДИАГРАММЫ ДЛЯ ПРОЕКТА TRPS2
+' Веб-агрегатор спортивных тренеров
+' ============================================
+
+' ============================================
+' 1. ДИАГРАММА КЛАССОВ (Class Diagram)
+' ============================================
+
+package "app.models" {
+    class User {
+        - id: Integer
+        - full_name: String
+        - email: String
+        - password_hash: String
+        - passport_data: String
+        - created_at: Timestamp
+        --
+        + {static} create(full_name, email, password, passport_data): dict
+        + {static} get_by_id(user_id): dict
+        + {static} get_by_email(email): dict
+        + {static} verify_password(user, password): bool
+    }
+    
+    class Trainer {
+        - id: Integer
+        - full_name: String
+        - specialization: String
+        - description: String
+        - address: String
+        - gym_name: String
+        - created_at: Timestamp
+        --
+        + {static} create(full_name, specialization, description, address, gym_name): dict
+        + {static} get_by_id(trainer_id): dict
+        + {static} get_all(specialization, search): list
+        + {static} exists(trainer_id): bool
+    }
+    
+    class Record {
+        - id: Integer
+        - user_id: Integer
+        - trainer_id: Integer
+        - datetime: String
+        - duration: Integer
+        - status: String
+        - created_at: Timestamp
+        --
+        + {static} STATUS_PENDING: String
+        + {static} STATUS_CONFIRMED: String
+        + {static} STATUS_CANCELLED: String
+        + {static} STATUS_COMPLETED: String
+        + {static} create(user_id, trainer_id, datetime_str, duration, status): dict
+        + {static} get_by_id(record_id): dict
+        + {static} get_by_user(user_id, status): list
+        + {static} update(record_id, datetime_str, duration, status): dict
+        + {static} cancel(record_id): dict
+        + {static} belongs_to_user(record_id, user_id): bool
+        + {static} exists_conflicting_record(trainer_id, datetime_str, duration, exclude_record_id): bool
+    }
+    
+    class Review {
+        - id: Integer
+        - user_id: Integer
+        - trainer_id: Integer
+        - text: String
+        - rating: Integer
+        - created_at: Timestamp
+        - updated_at: Timestamp
+        --
+        + {static} create(user_id, trainer_id, text, rating): dict
+        + {static} get_by_id(review_id): dict
+        + {static} get_by_trainer(trainer_id): list
+        + {static} get_by_user_and_trainer(user_id, trainer_id): dict
+        + {static} update(review_id, text, rating): dict
+        + {static} belongs_to_user(review_id, user_id): bool
+    }
+    
+    class Schedule {
+        - id: Integer
+        - trainer_id: Integer
+        - day_of_week: Integer
+        - start_time: String
+        - end_time: String
+        - is_active: Integer
+        - created_at: Timestamp
+        - updated_at: Timestamp
+        --
+        + {static} DAYS_OF_WEEK: dict
+        + {static} create(trainer_id, day_of_week, start_time, end_time, is_active): dict
+        + {static} get_by_id(schedule_id): dict
+        + {static} get_by_trainer(trainer_id): list
+        + {static} get_by_trainer_and_day(trainer_id, day_of_week): dict
+        + {static} update(schedule_id, start_time, end_time, is_active): dict
+        + {static} delete(schedule_id): bool
+        + {static} exists(schedule_id): bool
+        + {static} is_working_time(trainer_id, datetime_str): bool
+    }
+}
+
+' Связи между классами
+User "1" --> "*" Record : создает
+Trainer "1" --> "*" Record : имеет записи
+User "1" --> "*" Review : пишет
+Trainer "1" --> "*" Review : получает
+Trainer "1" --> "*" Schedule : имеет расписание
+
+@enduml
+
+@startuml Component_Diagram
+!theme plain
+skinparam linetype ortho
+
+' ============================================
+' 2. ДИАГРАММА КОМПОНЕНТОВ (Component Diagram)
+' Структурная схема программного продукта
+' ============================================
+
+package "Flask Application" {
+    [Flask App] as App
+    [Config] as Config
+    
+    package "API Blueprints" {
+        [Auth Blueprint] as AuthBP
+        [Trainers Blueprint] as TrainersBP
+        [Records Blueprint] as RecordsBP
+        [Reviews Blueprint] as ReviewsBP
+        [Schedules Blueprint] as SchedulesBP
+    }
+    
+    package "Core Modules" {
+        [Models] as Models
+        [Database] as Database
+        [Validators] as Validators
+        [CSRF Protection] as CSRF
+        [Error Handlers] as Errors
+    }
+    
+    [SQLite Database] as DB
+}
+
+App --> Config
+App --> AuthBP
+App --> TrainersBP
+App --> RecordsBP
+App --> ReviewsBP
+App --> SchedulesBP
+App --> Database
+App --> CSRF
+App --> Errors
+
+AuthBP --> Models
+AuthBP --> Validators
+AuthBP --> CSRF
+
+TrainersBP --> Models
+TrainersBP --> Validators
+
+RecordsBP --> Models
+RecordsBP --> Validators
+RecordsBP --> CSRF
+
+ReviewsBP --> Models
+ReviewsBP --> Validators
+ReviewsBP --> CSRF
+
+SchedulesBP --> Models
+SchedulesBP --> Validators
+SchedulesBP --> CSRF
+
+Models --> Database
+Database --> DB
+
+@enduml
+
+@startuml Sequence_Registration
+!theme plain
+
+' ============================================
+' 3. ДИАГРАММА ПОСЛЕДОВАТЕЛЬНОСТИ: Регистрация
+' ============================================
+
+actor Client
+participant "Auth Blueprint" as Auth
+participant "Validators" as Valid
+participant "User Model" as User
+participant "Database" as DB
+
+Client -> Auth: POST /auth/register\n{full_name, email, password, passport_data}
+activate Auth
+
+Auth -> Valid: validate_required_fields()
+activate Valid
+Valid --> Auth: OK
+deactivate Valid
+
+Auth -> Valid: validate_full_name()
+activate Valid
+Valid --> Auth: OK
+deactivate Valid
+
+Auth -> Valid: validate_email()
+activate Valid
+Valid --> Auth: OK
+deactivate Valid
+
+Auth -> Valid: validate_password()
+activate Valid
+Valid --> Auth: OK
+deactivate Valid
+
+Auth -> Valid: validate_passport_data()
+activate Valid
+Valid --> Auth: OK
+deactivate Valid
+
+Auth -> User: create(full_name, email, password, passport_data)
+activate User
+
+User -> DB: INSERT INTO users
+activate DB
+DB --> User: user_id
+deactivate DB
+
+User --> Auth: user dict
+deactivate User
+
+Auth --> Client: 201 Created\n{user data}
+deactivate Auth
+
+@enduml
+
+@startuml Sequence_Booking
+!theme plain
+
+' ============================================
+' 4. ДИАГРАММА ПОСЛЕДОВАТЕЛЬНОСТИ: Создание записи
+' ============================================
+
+actor Client
+participant "Records Blueprint" as Records
+participant "CSRF" as CSRF
+participant "Validators" as Valid
+participant "Record Model" as Record
+participant "Trainer Model" as Trainer
+participant "Schedule Model" as Schedule
+participant "Database" as DB
+
+Client -> Records: POST /records\n{csrf_token, trainer_id, datetime, duration}
+activate Records
+
+Records -> CSRF: verify_csrf_token()
+activate CSRF
+CSRF --> Records: OK
+deactivate CSRF
+
+Records -> Valid: validate_required_fields()
+activate Valid
+Valid --> Records: OK
+deactivate Valid
+
+Records -> Trainer: get_by_id(trainer_id)
+activate Trainer
+Trainer -> DB: SELECT * FROM trainers\nWHERE id = ?
+activate DB
+DB --> Trainer: trainer data
+deactivate DB
+Trainer --> Records: trainer dict
+deactivate Trainer
+
+alt Тренер не найден
+    Records --> Client: 404 Not Found
+else Тренер найден
+    Records -> Valid: validate_datetime(datetime)
+    activate Valid
+    Valid --> Records: OK, datetime_obj
+    deactivate Valid
+    
+    Records -> Valid: validate_duration(duration)
+    activate Valid
+    Valid --> Records: OK, duration_int
+    deactivate Valid
+    
+    Records -> Schedule: is_working_time(trainer_id, datetime_obj)
+    activate Schedule
+    Schedule -> DB: SELECT * FROM schedules\nWHERE trainer_id = ? AND day_of_week = ?
+    activate DB
+    DB --> Schedule: schedules
+    deactivate DB
+    Schedule --> Records: is_working, error_message
+    deactivate Schedule
+    
+    alt Начало тренировки вне рабочего времени
+        Records --> Client: 400 Validation Error
+    else Начало в рабочее время
+        Records -> Schedule: is_working_time(trainer_id, end_datetime)
+        activate Schedule
+        Schedule -> DB: SELECT * FROM schedules\nWHERE trainer_id = ? AND day_of_week = ?
+        activate DB
+        DB --> Schedule: schedules
+        deactivate DB
+        Schedule --> Records: is_working_end, error_message
+        deactivate Schedule
+        
+        alt Конец тренировки вне рабочего времени
+            Records --> Client: 400 Validation Error
+        else Конец в рабочее время
+            Records -> Record: exists_conflicting_record(trainer_id, datetime, duration)
+            activate Record
+            Record -> DB: SELECT id FROM records\nWHERE trainer_id = ? AND status != 'cancelled'\nAND (перекрытие времени)
+            activate DB
+            DB --> Record: None
+            deactivate DB
+            Record --> Records: False
+            deactivate Record
+            
+            alt Конфликтующая запись найдена
+                Records --> Client: 409 Conflict
+            else Конфликта нет
+                Records -> Record: create(user_id, trainer_id, datetime, duration)
+                activate Record
+                Record -> DB: INSERT INTO records\n(user_id, trainer_id, datetime, duration, status)
+                activate DB
+                DB --> Record: record_id
+                deactivate DB
+                Record --> Records: record dict
+                deactivate Record
+                
+                Records -> Trainer: get_by_id(trainer_id)
+                activate Trainer
+                Trainer -> DB: SELECT * FROM trainers\nWHERE id = ?
+                activate DB
+                DB --> Trainer: trainer data
+                deactivate DB
+                Trainer --> Records: trainer dict
+                deactivate Trainer
+                
+                Records --> Client: 201 Created\n{record data with trainer}
+            end
+        end
+    end
+end
+
+deactivate Records
+
+@enduml
+
+@startuml Sequence_Review
+!theme plain
+
+' ============================================
+' 5. ДИАГРАММА ПОСЛЕДОВАТЕЛЬНОСТИ: Создание отзыва
+' ============================================
+
+actor Client
+participant "Reviews Blueprint" as Reviews
+participant "CSRF" as CSRF
+participant "Validators" as Valid
+participant "Review Model" as Review
+participant "Trainer Model" as Trainer
+participant "Database" as DB
+
+Client -> Reviews: POST /reviews\n{csrf_token, trainer_id, text, rating}
+activate Reviews
+
+Reviews -> CSRF: verify_csrf_token()
+activate CSRF
+CSRF --> Reviews: OK
+deactivate CSRF
+
+Reviews -> Valid: validate_review_text()
+activate Valid
+Valid --> Reviews: OK
+deactivate Valid
+
+Reviews -> Valid: validate_rating()
+activate Valid
+Valid --> Reviews: OK
+deactivate Valid
+
+Reviews -> Trainer: exists(trainer_id)
+activate Trainer
+Trainer -> DB: SELECT id FROM trainers
+activate DB
+DB --> Trainer: result
+deactivate DB
+Trainer --> Reviews: True
+deactivate Trainer
+
+Reviews -> Review: get_by_user_and_trainer(user_id, trainer_id)
+activate Review
+Review -> DB: SELECT * FROM reviews\nWHERE user_id = ? AND trainer_id = ?
+activate DB
+DB --> Review: None
+deactivate DB
+Review --> Reviews: None
+deactivate Review
+
+Reviews -> Review: create(user_id, trainer_id, text, rating)
+activate Review
+Review -> DB: INSERT INTO reviews
+activate DB
+DB --> Review: review_id
+deactivate DB
+Review --> Reviews: review dict
+deactivate Review
+
+Reviews --> Client: 201 Created\n{review data}
+deactivate Reviews
+
+@enduml
+
+@startuml ER_Diagram
+!theme plain
+
+' ============================================
+' 6. ER-ДИАГРАММА БАЗЫ ДАННЫХ
+' ============================================
+
+entity "users" {
+    * id : INTEGER <<PK>>
+    --
+    * full_name : TEXT
+    * email : TEXT <<UNIQUE>>
+    * password_hash : TEXT
+    * passport_data : TEXT
+    created_at : TIMESTAMP
+}
+
+entity "trainers" {
+    * id : INTEGER <<PK>>
+    --
+    * full_name : TEXT
+    * specialization : TEXT
+    description : TEXT
+    address : TEXT
+    gym_name : TEXT
+    created_at : TIMESTAMP
+}
+
+entity "records" {
+    * id : INTEGER <<PK>>
+    --
+    * user_id : INTEGER <<FK>>
+    * trainer_id : INTEGER <<FK>>
+    * datetime : TEXT
+    * duration : INTEGER
+    * status : TEXT
+    created_at : TIMESTAMP
+}
+
+entity "reviews" {
+    * id : INTEGER <<PK>>
+    --
+    * user_id : INTEGER <<FK>>
+    * trainer_id : INTEGER <<FK>>
+    * text : TEXT
+    * rating : INTEGER
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+}
+
+entity "schedules" {
+    * id : INTEGER <<PK>>
+    --
+    * trainer_id : INTEGER <<FK>>
+    * day_of_week : INTEGER
+    * start_time : TEXT
+    * end_time : TEXT
+    * is_active : INTEGER
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+}
+
+users ||--o{ records : "создает"
+trainers ||--o{ records : "имеет записи"
+users ||--o{ reviews : "пишет"
+trainers ||--o{ reviews : "получает"
+trainers ||--o{ schedules : "имеет расписание"
+
+@enduml
+
+@startuml Deployment_Diagram
+!theme plain
+
+' ============================================
+' 7. ДИАГРАММА РАЗВЕРТЫВАНИЯ
+' ============================================
+
+node "Client Browser" {
+    component [Web Client]
+}
+
+node "Application Server" {
+    component [Flask Application] {
+        [Blueprints]
+        [Models]
+        [Validators]
+        [CSRF Middleware]
+    }
+}
+
+node "Database Server" {
+    database "SQLite" {
+        [users table]
+        [trainers table]
+        [records table]
+        [reviews table]
+        [schedules table]
+    }
+}
+
+[Web Client] --> [Flask Application] : HTTP/HTTPS
+[Flask Application] --> [SQLite] : SQL queries
+
+@enduml
+

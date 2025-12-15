@@ -1,0 +1,78 @@
+@startuml ER_Diagram
+!theme plain
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam entity {
+    BackgroundColor #E8F4F8
+    BorderColor #2E86AB
+    FontSize 10
+}
+skinparam arrow {
+    Color #2E86AB
+    Thickness 2
+}
+
+' ============================================
+' ER-ДИАГРАММА БАЗЫ ДАННЫХ
+' Веб-агрегатор спортивных тренеров (TRPS2)
+' ============================================
+
+entity "users" as users {
+    * **id** : INTEGER <<PK>>
+    * **full_name** : TEXT
+    * **email** : TEXT <<UNIQUE>>
+    * **password_hash** : TEXT
+    * **passport_data** : TEXT
+    **created_at** : TIMESTAMP
+}
+
+entity "trainers" as trainers {
+    * **id** : INTEGER <<PK>>
+    * **full_name** : TEXT
+    * **specialization** : TEXT
+    **description** : TEXT
+    **address** : TEXT
+    **gym_name** : TEXT
+    **created_at** : TIMESTAMP
+}
+
+entity "records" as records {
+    * **id** : INTEGER <<PK>>
+    * **user_id** : INTEGER <<FK>>
+    * **trainer_id** : INTEGER <<FK>>
+    * **datetime** : TEXT
+    * **duration** : INTEGER
+    * **status** : TEXT
+    **created_at** : TIMESTAMP
+}
+
+entity "reviews" as reviews {
+    * **id** : INTEGER <<PK>>
+    * **user_id** : INTEGER <<FK>>
+    * **trainer_id** : INTEGER <<FK>>
+    * **text** : TEXT
+    * **rating** : INTEGER
+    **created_at** : TIMESTAMP
+    **updated_at** : TIMESTAMP
+}
+
+entity "schedules" as schedules {
+    * **id** : INTEGER <<PK>>
+    * **trainer_id** : INTEGER <<FK>>
+    * **day_of_week** : INTEGER
+    * **start_time** : TEXT
+    * **end_time** : TEXT
+    * **is_active** : INTEGER
+    **created_at** : TIMESTAMP
+    **updated_at** : TIMESTAMP
+}
+
+' Связи между таблицами
+users ||--o{ records
+trainers ||--o{ records
+users ||--o{ reviews
+trainers ||--o{ reviews
+trainers ||--o{ schedules
+
+@enduml
+

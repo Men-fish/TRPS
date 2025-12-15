@@ -1,0 +1,83 @@
+@startuml Component_Diagram
+!theme plain
+skinparam linetype ortho
+skinparam componentStyle rectangle
+
+' ============================================
+' ДИАГРАММА КОМПОНОВКИ МОДУЛЕЙ
+' Веб-агрегатор спортивных тренеров (TRPS2)
+' ============================================
+
+package "Внешние фреймворки" #LightBlue {
+    component "Flask" as Flask {
+        [API веб-сервера] as FlaskAPI
+    }
+    component "SQLite" as SQLite {
+        [API БД] as DBAPI
+    }
+    component "Werkzeug" as Werkzeug {
+        [API хеширования] as HashAPI
+    }
+    component "Flask-WTF" as FlaskWTF {
+        [API CSRF] as CSRFAPI
+    }
+}
+
+component "app.py" as App
+component "config.py" as Config
+component "__init__.py" as Init
+
+package "app/" #LightYellow {
+    component "auth.py" as Auth
+    component "trainers.py" as Trainers
+    component "records.py" as Records
+    component "reviews.py" as Reviews
+    component "schedules.py" as Schedules
+    component "models.py" as Models
+    component "database.py" as Database
+    component "validators.py" as Validators
+    component "csrf.py" as CSRF
+    component "errors.py" as Errors
+}
+
+' Внешние зависимости
+FlaskAPI --> App
+DBAPI --> App
+HashAPI --> App
+CSRFAPI --> App
+
+App --> Init
+App --> Config
+Init --> Database
+Init --> CSRF
+Init --> Errors
+Init --> Auth
+Init --> Trainers
+Init --> Records
+Init --> Reviews
+Init --> Schedules
+
+' Группировка связей
+Auth --> Models
+Auth --> Validators
+Auth --> CSRF
+Trainers --> Models
+Trainers --> Validators
+Records --> Models
+Records --> Validators
+Records --> CSRF
+Records --> Database
+Reviews --> Models
+Reviews --> Validators
+Reviews --> CSRF
+Schedules --> Models
+Schedules --> Validators
+Schedules --> CSRF
+
+Models --> Database
+Models --> Validators
+Database --> SQLite
+CSRF --> FlaskWTF
+Models --> Werkzeug
+
+@enduml

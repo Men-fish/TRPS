@@ -1,0 +1,79 @@
+@startuml Constantine_Structure
+!theme plain
+skinparam linetype ortho
+skinparam componentStyle rectangle
+
+' ============================================
+' СТРУКТУРНАЯ КАРТА КОНСТАНТАЙНА
+' Веб-агрегатор спортивных тренеров (TRPS2)
+' ============================================
+
+package "Уровень 0: Точка входа" #LightCyan {
+    component "app.py" as App
+}
+
+package "Уровень 1: Фабрика приложения" #LightBlue {
+    component "create_app" as CreateApp
+    component "Config" as Config
+}
+
+package "Уровень 2: API модули" #LightGreen {
+    component "Reviews Blueprint" as ReviewsBP
+    component "Records Blueprint" as RecordsBP
+    component "Trainers Blueprint" as TrainersBP
+    component "Auth Blueprint" as AuthBP
+    component "Schedules Blueprint" as SchedulesBP
+}
+
+package "Уровень 3: Бизнес-логика" #LightYellow {
+    component "CSRF" as CSRF
+    component "Models" as Models
+    component "Validators" as Validators
+    component "Errors" as Errors
+    component "Database" as Database
+}
+
+package "Уровень 4: Хранилище" #LightPink {
+    component "SQLite" as SQLite
+}
+
+' Зависимости между уровнями
+App --> CreateApp
+CreateApp --> Config
+CreateApp --> ReviewsBP
+CreateApp --> RecordsBP
+CreateApp --> TrainersBP
+CreateApp --> AuthBP
+CreateApp --> SchedulesBP
+
+' Зависимости Blueprints от бизнес-логики
+ReviewsBP --> CSRF
+ReviewsBP --> Models
+ReviewsBP --> Validators
+
+RecordsBP --> Models
+RecordsBP --> Validators
+RecordsBP --> CSRF
+
+TrainersBP --> Models
+TrainersBP --> Validators
+
+AuthBP --> Models
+AuthBP --> Validators
+AuthBP --> Errors
+
+SchedulesBP --> Models
+SchedulesBP --> Validators
+SchedulesBP --> CSRF
+
+' Зависимости бизнес-логики от Database
+Models --> Database
+Validators --> Database
+Errors --> Database
+
+' Зависимость Database от SQLite
+Database --> SQLite
+
+@enduml
+
+
